@@ -1,31 +1,191 @@
-1. 회의 목적
-이번 회의는 Emma 헬스케어 솔루션을 A1 제품에 탑재하는 방안을 논의하기 위해 진행되었다.
-Emma 솔루션을 A1에 적용하여 로봇에서 수집한 데이터를 분석하고, 이를 통해 헬스케어 관점의 가치를 도출할 수 있는지 검토하였다.
+{
 
-2. Emma 솔루션 개요
-Emma는 AI 모델 회사에서 제공하는 온디바이스 형태의 헬스케어 AI 솔루션이다.
-클라우드 기반 분석 방식이 아니라, 디바이스 내부에서 AI 모델을 구동하는 형태로 제공된다.
-로봇에 Emma 솔루션을 탑재하면 로봇이 수집하는 데이터를 활용하여 사람의 상태를 분석할 수 있다.
+           "ts": "2026-06-04T13:52:41:436",
 
-3. 분석 대상 데이터
-Emma 솔루션은 일상생활 속에서 수집되는 여러 데이터를 기반으로 사람의 상태를 파악한다.
-주요 활용 데이터는 다음과 같다.
+           "topic": "skmg/airbot/WRBA1M10KRDWA0925E00655/v1/cleanResult",
 
-사람의 표정을 기반으로 감정 상태 파악
-말투, 대화 내용 등을 기반으로 감정 상태 파악
-감정 또는 상태 분석을 위한 보조 데이터로 활용
+           "serial": "WRBA1M10KRDWA0925E00655",
 
+           "source_ip": "211.109.252.71",
 
-4. 주요 기능 방향
-A1 제품에 Emma 헬스케어 솔루션을 탑재할 경우 다음 기능을 검토할 수 있다.
+           "principal": "ce485173797457484cf8c76cfb0fa8768f696c595fc1b17c40a0537bee70ea37",
 
-감정 분석: 얼굴 표정, 말, 온도 등을 기반으로 사람의 감정 또는 기분 파악
-맥박 파악: A1을 통해 사람의 맥박 정보를 파악하는 기능 검토
-낙상 감지: 사용자의 낙상 여부를 감지하는 기능 검토
-보행 분석: 사용자의 보행 상태를 분석하는 기능 검토
+           "message": {
 
+                     "serial": "WRBA1M10KRDWA0925E00655",
 
-5. A1 적용 방향
-향후 A1 제품에 Emma 헬스케어 솔루션을 탑재하여 테스트를 진행하는 방향을 논의하였다.
-우선 A1 제품을 통해 Emma 솔루션을 적용해보고, 실제 테스트 과정에서 하드웨어적인 개선사항이 확인될 경우 이를 A1 Next 제품에 반영할 수 있다.
-예를 들어 카메라 위치와 같은 하드웨어 요소가 분석 성능에 영향을 줄 수 있으므로, 테스트 결과를 바탕으로 개선 필요 여부를 검토한다.
+                     "timestamp": "2026-06-04T04:52:40Z",
+
+                     "AQMCallType": "NONE",
+
+                     "airQualityAreaCleanList": [
+
+                                {
+
+                                           "afterAirQuality": {
+
+                                                     "AQ": {
+
+                                                                "AQLevel": 2,
+
+                                                                "Humidity": 50,
+
+                                                                "NOxIndexLEVEL": 1,
+
+                                                                "NOxRawData": 18195,
+
+                                                                "PM10": 83,
+
+                                                                "PM10LEVEL": 2,
+
+                                                                "PM1.0": 28,
+
+                                                                "PM1.0LEVEL": 1,
+
+                                                                "PM2.5": 33,
+
+                                                                "PM2.5LEVEL": 1,
+
+                                                                "Temperature": 24,
+
+                                                                "VOCIndexLEVEL": 1,
+
+                                                                "VOCRawData": 32000
+
+                                                     },
+
+                                                     "CO2": {
+
+                                                                "CO2Level": 0,
+
+                                                                "Humidity": 51,
+
+                                                                "ppm": 533,
+
+                                                                "Temperature": 22
+
+                                                     },
+
+                                                     "Formaldehyde": {
+
+                                                                "FALevel": 0,
+
+                                                                "Humidity": 47,
+
+                                                                "ppb": 0,
+
+                                                                "Temperature": 23
+
+                                                     },
+
+                                                     "time": "2026-06-04T13:52:40.756095Z"
+
+                                           },
+
+                                           "areaId": "0",
+
+                                           "beforeAirQuality": {
+
+                                                     "AQ": {
+
+                                                                "AQLevel": 1,
+
+                                                                "Humidity": 40,
+
+                                                                "NOxIndexLEVEL": 1,
+
+                                                                "NOxRawData": 19029,
+
+                                                                "PM10": 80,
+
+                                                                "PM10LEVEL": 1,
+
+                                                                "PM1.0": 27,
+
+                                                                "PM1.0LEVEL": 1,
+
+                                                                "PM2.5": 32,
+
+                                                                "PM2.5LEVEL": 1,
+
+                                                                "Temperature": 26.97253,
+
+                                                                "VOCIndexLEVEL": 1,
+
+                                                                "VOCRawData": 32000
+
+                                                     },
+
+                                                     "CO2": {
+
+                                                                "CO2Level": 0,
+
+                                                                "Humidity": 43,
+
+                                                                "ppm": 577,
+
+                                                                "Temperature": 26
+
+                                                     },
+
+                                                     "Formaldehyde": {
+
+                                                                "FALevel": 0,
+
+                                                                "Humidity": 46,
+
+                                                                "ppb": 0,
+
+                                                                "Temperature": 24
+
+                                                     },
+
+                                                     "time": "2026-06-04T13:46:59.153251Z"
+
+                                           },
+
+                                           "isCompleted": true
+
+                                }
+
+                     ],
+
+                     "alarmList": [
+
+                                {
+
+                                           "alarmCode": "AQ_TARGET",
+
+                                           "alarmMessage": "PM10",
+
+                                           "alarmParam": [
+
+                                                     {
+
+                                                                "paramKey": "AREA_ID",
+
+                                                                "paramValue": "0"
+
+                                                     }
+
+                                           ]
+
+                                }
+
+                     ],
+
+                     "cleanType": "CLMD0001",
+
+                     "duration": "00:06:00",
+
+                     "outdoorWIMode": "N",
+
+                     "scanningCleanMode": "N",
+
+                     "startTime": "2026-06-04T13:46:59.153251Z",
+
+                     "weeklyWIMode": "N"
+
+           }
+
+}
