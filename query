@@ -1,0 +1,65 @@
+아래처럼 보면 됩니다. **정확한 “하루 적재량”은 각 테이블에 날짜 컬럼이 있어야 가능**하고, 날짜 컬럼 없이도 가능한 건 **현재 row 수 / 용량 통계**입니다.
+
+## 1. 특정 DB 아래 모든 테이블 row 수 / 용량
+
+```sql
+SELECT
+  table_name,
+  table_rows,
+  ROUND(data_length / 1024 / 1024, 2) AS data_mb,
+  ROUND(index_length / 1024 / 1024, 2) AS index_mb,
+  ROUND((data_length + index_length) / 1024 / 1024, 2) AS total_mb
+FROM information_schema.tables
+WHERE table_schema = '데이터베이스명'
+  AND table_type = 'BASE TABLE'
+ORDER BY total_mb DESC;
+```
+
+> `table_rows`는 InnoDB에서는 추정치일 수 있습니다.
+
+## 2. 모든 테이블의 날짜/시간 컬럼 후보 찾기
+
+```sql
+SELECT
+  table_name,
+  column_name,
+  data_type
+FROM information_schema.columns
+WHERE table_schema = '데이터베이스명'
+  AND data_type IN ('date', 'datetime', 'timestamp')
+ORDER BY table_name, column_name;
+```
+
+## 3. 모든 테이블에 대해 실제 COUNT 쿼리 만들기
+
+아래 쿼리는 **실행문을 만들어주는 쿼리**입니다.
+
+```sql
+SELECT CONCAT(
+  'SELECT ''', table_name, ''' AS table_name, COUNT(*) AS row_count FROM `',
+  table_schema, '`.`', table_name, '`;'
+) AS sql_text
+FROM information_schema.tables
+WHERE table_schema = '데이터베이스명'
+  AND table_type = 'BASE TABLE';
+```
+
+생성된 SQL들을 복사해서 실행하면 됩니다.
+
+## 4. 하루 적재량용 SQL 자동 생성
+
+예를 들어 모든 테이블에 `created_at` 컬럼이 있다고 가정하면:
+
+```sql
+SELECT CONCAT(
+  'SELECT ''', table_name, ''' AS table_name, DATE(created_at) AS dt, COUNT(*) AS row_count ',
+  'FROM `', table_schema, '`.`', table_name, '` ',
+  'WHERE created_at >= CURDATE() - INTERVAL 7 DAY ',
+  'GROUP BY DATE(created_at)'
+) AS sql_text
+FROM information_schema.columns
+WHERE table_schema = '데이터베이스명'
+  AND column_name = 'created_at';
+```
+
+생성된 SQL을 실행하면 테이블별 일별 적재량을 볼 수 있습니다.
