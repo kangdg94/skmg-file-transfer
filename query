@@ -63,3 +63,20 @@ WHERE table_schema = '데이터베이스명'
 ```
 
 생성된 SQL을 실행하면 테이블별 일별 적재량을 볼 수 있습니다.
+
+
+
+SELECT
+  COUNT(*) AS today_rows,
+  ROUND(
+    COUNT(*) * (
+      SELECT (data_length + index_length) / NULLIF(table_rows, 0)
+      FROM information_schema.tables
+      WHERE table_schema = '데이터베이스명'
+        AND table_name = '테이블명'
+    ) / 1024 / 1024,
+    2
+  ) AS estimated_today_mb
+FROM 데이터베이스명.테이블명
+WHERE create_date >= CURDATE()
+  AND create_date < CURDATE() + INTERVAL 1 DAY;
