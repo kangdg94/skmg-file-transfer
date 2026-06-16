@@ -1,82 +1,56 @@
-아래처럼 보면 됩니다. **정확한 “하루 적재량”은 각 테이블에 날짜 컬럼이 있어야 가능**하고, 날짜 컬럼 없이도 가능한 건 **현재 row 수 / 용량 통계**입니다.
 
-## 1. 특정 DB 아래 모든 테이블 row 수 / 용량
 
-```sql
 SELECT
-  table_name,
-  table_rows,
-  ROUND(data_length / 1024 / 1024, 2) AS data_mb,
-  ROUND(index_length / 1024 / 1024, 2) AS index_mb,
-  ROUND((data_length + index_length) / 1024 / 1024, 2) AS total_mb
-FROM information_schema.tables
-WHERE table_schema = '데이터베이스명'
-  AND table_type = 'BASE TABLE'
-ORDER BY total_mb DESC;
-```
-
-> `table_rows`는 InnoDB에서는 추정치일 수 있습니다.
-
-## 2. 모든 테이블의 날짜/시간 컬럼 후보 찾기
-
-```sql
-SELECT
-  table_name,
-  column_name,
-  data_type
+    table_schema,
+    table_name,
+    column_name
 FROM information_schema.columns
-WHERE table_schema = '데이터베이스명'
-  AND data_type IN ('date', 'datetime', 'timestamp')
+WHERE table_schema = 'DB명'
+  AND column_name IN ('create_date', 'created_at')
 ORDER BY table_name, column_name;
-```
 
-## 3. 모든 테이블에 대해 실제 COUNT 쿼리 만들기
-
-아래 쿼리는 **실행문을 만들어주는 쿼리**입니다.
-
-```sql
-SELECT CONCAT(
-  'SELECT ''', table_name, ''' AS table_name, COUNT(*) AS row_count FROM `',
-  table_schema, '`.`', table_name, '`;'
-) AS sql_text
-FROM information_schema.tables
-WHERE table_schema = '데이터베이스명'
-  AND table_type = 'BASE TABLE';
-```
-
-생성된 SQL들을 복사해서 실행하면 됩니다.
-
-## 4. 하루 적재량용 SQL 자동 생성
-
-예를 들어 모든 테이블에 `created_at` 컬럼이 있다고 가정하면:
-
-```sql
-SELECT CONCAT(
-  'SELECT ''', table_name, ''' AS table_name, DATE(created_at) AS dt, COUNT(*) AS row_count ',
-  'FROM `', table_schema, '`.`', table_name, '` ',
-  'WHERE created_at >= CURDATE() - INTERVAL 7 DAY ',
-  'GROUP BY DATE(created_at)'
-) AS sql_text
-FROM information_schema.columns
-WHERE table_schema = '데이터베이스명'
-  AND column_name = 'created_at';
-```
-
-생성된 SQL을 실행하면 테이블별 일별 적재량을 볼 수 있습니다.
-
-
+---
 
 SELECT
-  COUNT(*) AS today_rows,
-  ROUND(
-    COUNT(*) * (
-      SELECT (data_length + index_length) / NULLIF(table_rows, 0)
-      FROM information_schema.tables
-      WHERE table_schema = '데이터베이스명'
-        AND table_name = '테이블명'
-    ) / 1024 / 1024,
-    2
-  ) AS estimated_today_mb
-FROM 데이터베이스명.테이블명
-WHERE create_date >= CURDATE()
-  AND create_date < CURDATE() + INTERVAL 1 DAY;
+    CONCAT(
+        'SELECT ''', c.table_name, ''' AS table_name, ',
+        '''', c.column_name, ''' AS date_column, ',
+        'DATE_FORMAT(`', c.column_name, '`, ''%Y-%m'') AS ym, ',
+        'COUNT(*) AS row_count, ',
+        'ROUND(COUNT(*) * ', t.avg_row_length, ' / 1024 / 1024, 2) AS estimated_data_mb ',
+        'FROM `', c.table_schema, '`.`', c.table_name, '` ',
+        'WHERE `', c.column_name, '` IS NOT NULL ',
+        'GROUP BY DATE_FORMAT(`', c.column_name, '`, ''%Y-%m'')'
+    ) AS monthly_sql
+FROM information_schema.columns c
+JOIN information_schema.tables t
+  ON t.table_schema = c.table_schema
+ AND t.table_name = c.table_name
+WHERE c.table_schema = 'DB명'
+  AND c.column_name IN ('create_date', 'created_at')
+  AND t.table_type = 'BASE TABLE'
+ORDER BY c.table_name;
+
+-------
+
+SELECT GROUP_CONCAT(monthly_sql SEPARATOR ' UNION ALL ')
+FROM (
+    SELECT
+        CONCAT(
+            'SELECT ''', c.table_name, ''' AS table_name, ',
+            '''', c.column_name, ''' AS date_column, ',
+            'DATE_FORMAT(`', c.column_name, '`, ''%Y-%m'') AS ym, ',
+            'COUNT(*) AS row_count, ',
+            'ROUND(COUNT(*) * ', t.avg_row_length, ' / 1024 / 1024, 2) AS estimated_data_mb ',
+            'FROM `', c.table_schema, '`.`', c.table_name, '` ',
+            'WHERE `', c.column_name, '` IS NOT NULL ',
+            'GROUP BY DATE_FORMAT(`', c.column_name, '`, ''%Y-%m'')'
+        ) AS monthly_sql
+    FROM information_schema.columns c
+    JOIN information_schema.tables t
+      ON t.table_schema = c.table_schema
+     AND t.table_name = c.table_name
+    WHERE c.table_schema = 'DB명'
+      AND c.column_name IN ('create_date', 'created_at')
+      AND t.table_type = 'BASE TABLE'
+) x;
