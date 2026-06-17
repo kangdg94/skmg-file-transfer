@@ -1,0 +1,61 @@
+## dev 프로파일 설정.
+## 모든 값을 환경변수 대신 여기서 직접 설정한다. (운영/스테이징은 application-prod.yml 등으로 분리)
+## TODO 표시된 값은 실제 dev 인프라 값으로 채워 넣어야 한다.
+
+spring:
+  config:
+    activate:
+      on-profile: dev
+  data:
+    redis:
+      # ElastiCache(Redis) 클러스터 모드. 노드는 구성 엔드포인트가 아닌 샤드 노드 엔드포인트를 나열한다.
+      cluster:
+        nodes:
+          - skmg-airbot-d-redis-cluster-0001-001.skmg-airbot-d-redis-cluster.o7byqh.apn2.cache.amazonaws.com:33379
+          - skmg-airbot-d-redis-cluster-0001-002.skmg-airbot-d-redis-cluster.o7byqh.apn2.cache.amazonaws.com:33379
+          - skmg-airbot-d-redis-cluster-0001-003.skmg-airbot-d-redis-cluster.o7byqh.apn2.cache.amazonaws.com:33379
+        max-redirects: 3
+      # password:              # AUTH 사용 시 주석 해제
+      # ssl:                   # 전송 중 암호화(in-transit encryption) 사용 시 주석 해제
+      #   enabled: true
+      lettuce:
+        cluster:
+          refresh:
+            # 토폴로지 자동 갱신. 페일오버/스케일 시 노드 변경을 주기적으로 반영한다.
+            adaptive: true
+            period: 30s
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://skmg-benjamin-dev-aurora.cluster-czqqu6iguakw.ap-northeast-2.rds.amazonaws.com:3306/airbotdev
+    username: clobot_dev               # TODO: dev DB 계정
+    password: croms2024!$              # TODO: dev DB 비밀번호
+    hikari:
+      maximum-pool-size: 150
+      minimum-idle: 50
+      idle-timeout: 60000
+      max-lifetime: 1800000
+      connection-timeout: 30000
+
+push:
+  aws:
+    region: ap-northeast-2
+    # 정적 자격증명. 비워두면 ECS Task Role / 환경변수 등을 자동 탐색한다.
+    # dev 로컬 테스트 시에만 채우고, 배포 환경에서는 비워서 Task Role 사용 권장.
+    access-key-id:
+    secret-access-key:
+  kinesis:
+    # 구독할 Kinesis 스트림 이름 목록. skmg/airbot/+/+/status 토픽이 흘러오는 스트림.
+    # 비우면 컨슈머가 시작되지 않는다.
+    stream-names:
+      - skmg-airbot-kds-dev   # TODO: dev Kinesis 스트림 이름
+    application-name: air-bot-push-server-dev   # KCL 앱 이름(접두사). DynamoDB 리스 테이블명에 사용
+    initial-position: LATEST                     # LATEST 또는 TRIM_HORIZON
+  websocket:
+    # API Gateway WebSocket 관리(Management) endpoint (서버→클라이언트 push 용)
+    endpoint: https://1r4xiikk8h.execute-api.ap-northeast-2.amazonaws.com/dev/@connections
+
+logging:
+  level:
+    # dev 는 파이프라인 추적을 위해 DEBUG. (레코드 수신/매핑/변경감지/전송 전 과정 로그)
+    com.skmagic.push: DEBUG
+    software.amazon.kinesis: WARN

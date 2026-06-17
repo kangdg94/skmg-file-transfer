@@ -1,0 +1,67 @@
+plugins {
+    id 'org.springframework.boot' version '3.2.4'
+    id 'io.spring.dependency-management' version '1.1.4'
+    id 'java'
+}
+
+group = 'com.skmagic'
+version = '1.0.0'
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
+}
+
+repositories {
+    mavenCentral()
+}
+
+ext {
+    // AWS SDK v2 BOM. KCL 2.6.x 와 정렬되는 버전을 사용한다.
+    awsSdkVersion = '2.25.27'
+    kclVersion = '2.6.0'
+}
+
+dependencyManagement {
+    imports {
+        mavenBom "software.amazon.awssdk:bom:${awsSdkVersion}"
+    }
+}
+
+dependencies {
+    // Spring Boot. $connect/$disconnect HTTP 라우트 수신을 위해 web(MVC) 사용.
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.springframework.boot:spring-boot-starter-data-redis'
+    implementation 'org.springframework.boot:spring-boot-starter-actuator'
+
+    // DB (MyBatis + MySQL). 디바이스 상태 가공 시 DB 보강 조회에 사용. (backend-api 와 동일 방식)
+    implementation 'org.mybatis.spring.boot:mybatis-spring-boot-starter:3.0.3'
+    implementation 'mysql:mysql-connector-java:8.0.33'
+
+    // OpenCV (점-다각형 포함 판정 / syncMode 방 계산). openpnp 배포본은 네이티브를 번들로 제공한다.
+    implementation 'org.openpnp:opencv:4.9.0-0'
+
+    // JSON
+    implementation 'com.fasterxml.jackson.core:jackson-databind'
+    implementation 'com.google.code.gson:gson'
+
+    // Kinesis Client Library (KCL 2.x). 내부적으로 DynamoDB(리스), CloudWatch(메트릭) 사용.
+    implementation "software.amazon.kinesis:amazon-kinesis-client:${kclVersion}"
+
+    // AWS SDK v2 (BOM 으로 버전 관리)
+    implementation 'software.amazon.awssdk:kinesis'
+    implementation 'software.amazon.awssdk:dynamodb'
+    implementation 'software.amazon.awssdk:cloudwatch'
+    implementation 'software.amazon.awssdk:apigatewaymanagementapi' // 서버→클라이언트 push (PostToConnection)
+    implementation 'software.amazon.awssdk:auth'
+    implementation 'software.amazon.awssdk:regions'
+
+    compileOnly 'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok'
+
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+}
+
+tasks.named('test') {
+    useJUnitPlatform()
+}

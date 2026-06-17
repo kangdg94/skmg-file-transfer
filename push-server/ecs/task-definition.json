@@ -1,0 +1,41 @@
+{
+  "family": "air-bot-push-server",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "512",
+  "memory": "1024",
+  "executionRoleArn": "arn:aws:iam::<ACCOUNT_ID>:role/ecsTaskExecutionRole",
+  "taskRoleArn": "arn:aws:iam::<ACCOUNT_ID>:role/air-bot-push-server-task-role",
+  "containerDefinitions": [
+    {
+      "name": "push-server",
+      "image": "<ACCOUNT_ID>.dkr.ecr.ap-northeast-2.amazonaws.com/air-bot-push-server:latest",
+      "essential": true,
+      "portMappings": [
+        {
+          "containerPort": 8081,
+          "protocol": "tcp"
+        }
+      ],
+      "environment": [
+        { "name": "SPRING_PROFILES_ACTIVE", "value": "dev" }
+      ],
+      "healthCheck": {
+        "command": ["CMD-SHELL", "curl -f http://localhost:8081/actuator/health || exit 1"],
+        "interval": 30,
+        "timeout": 5,
+        "retries": 3,
+        "startPeriod": 60
+      },
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/air-bot-push-server",
+          "awslogs-region": "ap-northeast-2",
+          "awslogs-stream-prefix": "push-server",
+          "awslogs-create-group": "true"
+        }
+      }
+    }
+  ]
+}

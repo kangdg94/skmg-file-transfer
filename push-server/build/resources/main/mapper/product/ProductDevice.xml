@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.skmagic.push.mapper.ProductDeviceMapper">
+
+    <select id="getMapIdBySerial" resultType="java.lang.Long">
+        /** getMapIdBySerial **/
+        SELECT map_id
+        FROM device_map dm
+        WHERE device_id = #{deviceId}
+    </select>
+
+    <select id="getDeviceIdBySerial" resultType="java.lang.Long">
+        /** getDeviceIdBySerial **/
+        SELECT id
+        FROM device
+        WHERE serial = #{serial}
+          AND linked_yn = 'Y'
+    </select>
+
+    <select id="getScheduleTypeCode" resultType="java.lang.String">
+        /** getScheduleTypeCode **/
+        SELECT schedule_type_code
+        FROM reserve_clean
+        WHERE id = #{scheduleId}
+    </select>
+
+    <select id="getInstallYn" resultType="java.lang.String">
+        /** getInstallYn **/
+        SELECT IFNULL(install_yn, 'N') as install_yn
+        FROM device_map
+        WHERE device_id = (SELECT id FROM device WHERE serial = #{serial} AND linked_yn = 'Y')
+    </select>
+
+    <select id="getCleanStartTime" resultType="java.lang.String">
+        /* getCleanStartTime */
+        SELECT MIN(create_date)
+        FROM history_clean_status hcs
+        WHERE EXISTS (SELECT 'x' FROM device dev WHERE serial = #{serial} AND linked_yn = 'Y' AND hcs.device_id = dev.id)
+        AND status = 'start'
+        GROUP BY hcs.control_id
+        ORDER BY MAX(hcs.id) DESC
+        LIMIT 1
+    </select>
+
+    <select id="getDeviceConfigMapper" resultType="com.skmagic.push.model.DeviceConfig">
+        /** getDeviceConfig **/
+        SELECT IFNULL(NULLIF(dc.home_lock_yn, ''), 'N') AS homeLockYn
+             , IFNULL(NULLIF(dc.privacy_mode_yn, ''), 'N') AS privacyLockYn
+             , IFNULL(NULLIF(dc.night_mode_yn, ''), 'N') AS nightModeYn
+             , IFNULL(NULLIF(dc.auto_call_yn, ''), 'N') AS autoCallYn
+             , IFNULL(NULLIF(dc.setting_yn, ''), 'N') AS settingYn
+        FROM device_config dc, device dev
+        WHERE dc.serial = dev.serial
+          AND dev.linked_yn = 'Y'
+          AND dev.serial = #{serial}
+    </select>
+
+    <select id="getChargeState" resultType="java.lang.String">
+        /** getChargeState **/
+        SELECT
+            so.charge_state
+        FROM statistics_operation so
+                 JOIN device d ON d.id = so.device_id
+        WHERE d.serial = #{serial}
+          AND d.linked_yn = 'Y'
+    </select>
+
+    <select id="getChargingYn" resultType="java.lang.String">
+        /** getChargingYn **/
+        SELECT
+            CASE
+                WHEN d.device_type = 'ABT' THEN IFNULL(so.is_charging, 'N')
+                WHEN d.device_type = 'AQM_WLS'
+                    AND so.charge_state IN ('Charging', 'Charged') THEN 'Y'
+                WHEN d.device_type = 'AQM'
+                    AND so.create_date >= DATE_SUB(NOW(), INTERVAL 2 MINUTE) THEN 'Y'
+                ELSE 'N' END
+        FROM statistics_operation so
+                 JOIN device d ON d.id = so.device_id
+        WHERE d.serial = #{serial}
+          AND d.linked_yn = 'Y'
+    </select>
+
+    <select id="getDeviceMapAreaIdByMapId" resultType="java.lang.String">
+        select area_id as areaId
+        from device_map
+        where map_id = #{mapId}
+    </select>
+
+</mapper>

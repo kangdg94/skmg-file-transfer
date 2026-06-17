@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.skmagic.push.mapper.BuildingMemberMapper">
+
+    <!--
+      backend-api 의 BuildingMember.xml getBuildingMemberListBySerial 와 동일 로직.
+      serial → 건물 → 건물 멤버(user) 의 login_id 목록을 조회한다.
+    -->
+    <select id="getBuildingMemberLoginIdListBySerial" resultType="java.lang.String">
+        /** getBuildingMemberLoginIdListBySerial **/
+        SELECT usr.login_id
+        FROM user_building ub
+            INNER JOIN device dev ON dev.building_id = ub.id
+            INNER JOIN user_building_member ubm ON ub.id = ubm.building_id
+            INNER JOIN `user` usr ON ubm.user_id = usr.id
+        WHERE dev.serial = #{serial}
+          AND dev.linked_yn = 'Y'
+    </select>
+
+</mapper>
