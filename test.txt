@@ -1,8 +1,27 @@
-SELECT com. id AS company_id
-INTO company_id
-FROM device dev
-INNER JOIN contract con ON dev. contract_id - con.id
-INNER JOIN user us ON con. user_id = usr. id
-INNER JOIN company com ON con. company_id - com.id
-WHERE dev. serial = deviceSerial COLLATE utE8mb4_0900_ai_ci
-AND dev. linked_yn 'Y':
+{
+  "startDate": "2026-07-07",
+  "startTime": "3:24 PM",
+  "startDateTime": "2026-07-07 03:24:10",
+  "cleanCode": "CLMD0003",
+  "cleanType": "이동청정",
+  "duration": "600",
+  "mapId": 12,
+  "scanningCleanYn": "N",
+  "callAqmType": "...",
+  "callAqmReason": "...",
+  "areaIdList": ["1", "2"],
+  "areaAirQualityList": {
+    "beforeCleanReport": [ { "areaId": "1", "aqLevel": "...", ... } ],
+    "afterCleanReport":  [ { "areaId": "1", "aqLevel": "...", ... } ]
+  },
+  "alarmList": [
+    {
+      "alarmCode": "clean_result",
+      "alarmMessage": "failed",
+      "alarmParam": [
+        { "paramKey": "Fail_reason", "paramValue": "error" },
+        { "paramKey": "cleantype",   "paramValue": "CLMD0003" }
+      ]
+    }
+  ]
+}
