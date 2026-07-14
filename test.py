@@ -184,7 +184,17 @@ def run_daily_clean_area_stat(stat_date=None):
 
  
 
-        row_count
+        row_count,
+
+        morning_count,
+
+        day_count,
+
+        evening_count,
+
+        night_count,
+
+        dawn_count
 
     )
 
@@ -303,7 +313,17 @@ def run_daily_clean_area_stat(stat_date=None):
 
  
 
-        COUNT(*) AS row_count
+        COUNT(*) AS row_count,
+
+        SUM(CASE WHEN HOUR(hacr.create_date) BETWEEN 6 AND 10 THEN 1 ELSE 0 END) AS morning_count,
+
+        SUM(CASE WHEN HOUR(hacr.create_date) BETWEEN 11 AND 16 THEN 1 ELSE 0 END) AS day_count,
+
+        SUM(CASE WHEN HOUR(hacr.create_date) BETWEEN 17 AND 20 THEN 1 ELSE 0 END) AS evening_count,
+
+        SUM(CASE WHEN HOUR(hacr.create_date) BETWEEN 21 AND 23 THEN 1 ELSE 0 END) AS night_count,
+
+        SUM(CASE WHEN HOUR(hacr.create_date) BETWEEN 0 AND 5 THEN 1 ELSE 0 END) AS dawn_count
 
     FROM history_clean_result hcr
 
@@ -425,6 +445,16 @@ def run_daily_clean_area_stat(stat_date=None):
  
 
         row_count = VALUES(row_count),
+
+        morning_count = VALUES(morning_count),
+
+        day_count = VALUES(day_count),
+
+        evening_count = VALUES(evening_count),
+
+        night_count = VALUES(night_count),
+
+        dawn_count = VALUES(dawn_count),
 
         update_date = CURRENT_TIMESTAMP
 
