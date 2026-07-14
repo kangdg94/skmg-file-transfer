@@ -1,3 +1,10 @@
+아침 06:00-10:59
+낮 11:00-16:59
+저녁 17:00-20:59
+밤 21:00-23:59
+새벽 00:00-05:59
+각 시간대는 위와 같이 정의 할꺼야.
+현재 이 파일은 청정 전/후의 평균을 history_clean_area_result_stat테이블에 적재하는 구조야. 이 테이블에 아침,낮,저녁,밤,새벽컬럼을 각각 추가해서 각 시간대별로 몇 번 호출 되었는지 확인 하려고 해. history_clean_result테이블의 start_time컬럼을 기준으로 통계를 내려고 해. 먼저 코드 확인 부터 해봐.
 import logging
 
 from datetime import datetime, timedelta, timezone
