@@ -1,6 +1,1 @@
-ALTER TABLE history_clean_area_result_stat
-  ADD COLUMN morning_count INT NOT NULL DEFAULT 0,
-  ADD COLUMN day_count     INT NOT NULL DEFAULT 0,
-  ADD COLUMN evening_count INT NOT NULL DEFAULT 0,
-  ADD COLUMN night_count   INT NOT NULL DEFAULT 0,
-  ADD COLUMN dawn_count    INT NOT NULL DEFAULT 0;
+https://fota.namuhx.com/A1/A1_1.6.1/PGM_A1_1.6.1-R02-D-All.json?Expires=1787131143&Signature=hhC4~WPkx1sCELd7pBvmqffULdPZLvBrp1dD8f4WORbvghch73O80RMKibXpUnli6ATpyUOsomh8fanIEq9Dn6vCa0wuA7C5s9MIZuIHqeY0MjNAZnmrtWmzK9ZZZeQuwzGLTsoCOGS2gEWpmyih3dLgxISFSKA4nf9IerNquXtyXpDCSmz-l-iSKnaznyyDCEY2QOqWw8dZ4xKUh6uJLz9rvD15zomRrU96wa2GiUwFi6uOiRIctX0Nx0VmLmZWyJf5UXJYSMDuGBs6fnlYAelMxvQSv-cvce4xM9YzVsrLp-7ICMQfprYgRW0ybMS1v8zoZ3KAMoto2SaPQ0LVw__&Key-Pair-Id=K2HZLFP1TSHCFB
