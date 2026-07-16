@@ -1,3 +1,4 @@
+import gzip
 import hashlib
 import json
 import logging
@@ -34,6 +35,13 @@ SOURCE_TIMEZONE = ZoneInfo(
 )
 
 TARGET_PREFIX = "skmg_airbot_v1_AILogData/"
+
+# 일반 JSON과 gzip 압축 JSON 모두 지원
+SUPPORTED_SUFFIXES = (
+    ".json",
+    ".json.gz",
+    ".gz",
+)
 
 
 # ---------------------------------------------------------------------
@@ -103,6 +111,58 @@ def get_db_connection():
         DB_CONNECTION.ping(reconnect=True)
 
     return DB_CONNECTION
+
+
+# ---------------------------------------------------------------------
+# gzip 압축 해제
+# ---------------------------------------------------------------------
+
+def decompress_s3_object(
+    raw_body: bytes,
+    object_key: str,
+    content_encoding: Optional[str] = None,
+) -> bytes:
+    """
+    S3 객체가 gzip 형식이면 압축을 해제한다.
+
+    감지 기준:
+    1. 객체 키가 .gz로 끝나는 경우
+    2. S3 Content-Encoding이 gzip인 경우
+    3. gzip 매직 바이트(1f 8b)가 존재하는 경우
+
+    일반 JSON 파일이면 원본 bytes를 그대로 반환한다.
+    """
+    normalized_encoding = (content_encoding or "").lower()
+
+    is_gzip_extension = object_key.lower().endswith(".gz")
+    is_gzip_encoding = "gzip" in normalized_encoding
+    is_gzip_magic = raw_body.startswith(b"\x1f\x8b")
+
+    if not (
+        is_gzip_extension
+        or is_gzip_encoding
+        or is_gzip_magic
+    ):
+        return raw_body
+
+    try:
+        decompressed_body = gzip.decompress(raw_body)
+
+        LOGGER.info(
+            "gzip 압축 해제 완료: object_key=%s, "
+            "compressed_size=%d, decompressed_size=%d",
+            object_key,
+            len(raw_body),
+            len(decompressed_body),
+        )
+
+        return decompressed_body
+
+    except (gzip.BadGzipFile, EOFError, OSError) as exc:
+        raise ValueError(
+            "gzip 압축 해제에 실패했습니다. "
+            f"object_key={object_key}"
+        ) from exc
 
 
 # ---------------------------------------------------------------------
@@ -393,7 +453,13 @@ def process_s3_object(
         Key=object_key,
     )
 
-    raw_body = response["Body"].read()
+    compressed_body = response["Body"].read()
+
+    raw_body = decompress_s3_object(
+        raw_body=compressed_body,
+        object_key=object_key,
+        content_encoding=response.get("ContentEncoding"),
+    )
 
     etag = (
         event_etag
@@ -482,9 +548,9 @@ def lambda_handler(event, context):
             )
             continue
 
-        if not object_key.lower().endswith(".json"):
+        if not object_key.lower().endswith(SUPPORTED_SUFFIXES):
             LOGGER.info(
-                "JSON 파일이 아니므로 건너뜁니다: %s",
+                "지원하지 않는 파일 형식이므로 건너뜁니다: %s",
                 object_key,
             )
             continue
