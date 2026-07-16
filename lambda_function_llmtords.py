@@ -49,7 +49,7 @@ SUPPORTED_SUFFIXES = (
 # ---------------------------------------------------------------------
 
 UPSERT_SQL = """
-INSERT INTO airbot_ai_log (
+INSERT INTO airbot_ai_function_token_log (
     source_event_id,
     topic,
     message_prefix,
@@ -58,6 +58,7 @@ INSERT INTO airbot_ai_log (
     request_log_id,
     request_log_meta,
     request_log_type,
+    request_log_content,
     serial_number,
     event_timestamp,
     source_bucket,
@@ -67,7 +68,7 @@ INSERT INTO airbot_ai_log (
 )
 VALUES (
     %s, %s, %s, %s, %s, %s, %s,
-    %s, %s, %s, %s, %s, %s, %s
+    %s, %s, %s, %s, %s, %s, %s, %s
 )
 ON DUPLICATE KEY UPDATE
     topic = VALUES(topic),
@@ -77,6 +78,7 @@ ON DUPLICATE KEY UPDATE
     request_log_id = VALUES(request_log_id),
     request_log_meta = VALUES(request_log_meta),
     request_log_type = VALUES(request_log_type),
+    request_log_content = VALUES(request_log_content),
     serial_number = VALUES(serial_number),
     event_timestamp = VALUES(event_timestamp),
     source_bucket = VALUES(source_bucket),
@@ -216,6 +218,7 @@ def load_json_records(raw_body: bytes) -> List[Dict[str, Any]]:
 
             try:
                 item = json.loads(line)
+
             except json.JSONDecodeError as exc:
                 raise ValueError(
                     f"JSON Lines {line_number}번째 줄 오류: {exc}"
@@ -261,6 +264,95 @@ def get_nested_or_dotted_value(
         return request_data.get(nested_key)
 
     return record.get(dotted_key)
+
+
+# ---------------------------------------------------------------------
+# request.log_content 디코딩
+# ---------------------------------------------------------------------
+
+def is_log_type_one(value: Any) -> bool:
+    """
+    request.log_type이 숫자 1 또는 문자열 "1"인지 확인한다.
+    """
+    if value is None:
+        return False
+
+    return str(value).strip() == "1"
+
+
+def decode_log_content(value: Any) -> Optional[str]:
+    """
+    request.log_content의 signed-byte 배열을 UTF-8 문자열로 변환한다.
+
+    Athena/Trino에서 사용 중인 아래 변환식과 동일한 방식이다.
+
+    from_utf8(
+        from_hex(
+            array_join(
+                transform(
+                    request.log_content,
+                    x -> format(
+                        '%02',
+                        ((x % 256) + 256) % 256
+                    )
+                ),
+                ' '
+            )
+        )
+    )
+
+    예:
+    [72, 101, 108, 108, 111] -> "Hello"
+
+    음수 값도 0~255 범위의 unsigned byte로 변환한다.
+
+    UTF-8로 해석할 수 없는 바이트는 Athena의 from_utf8 동작과
+    유사하게 유니코드 대체문자 U+FFFD로 치환한다.
+    """
+    if value is None:
+        return None
+
+    # JSON 문자열 안에 배열이 들어온 경우도 처리
+    # 예: "[-19, -107, -100, -22, -72, -128]"
+    if isinstance(value, str):
+        stripped = value.strip()
+
+        if not stripped:
+            return ""
+
+        try:
+            parsed_value = json.loads(stripped)
+
+        except json.JSONDecodeError as exc:
+            raise ValueError(
+                "request.log_content가 문자열인 경우 "
+                "JSON 배열 형식이어야 합니다."
+            ) from exc
+
+        value = parsed_value
+
+    if not isinstance(value, (list, tuple)):
+        raise ValueError(
+            "request.log_content는 숫자 배열이어야 합니다. "
+            f"actual_type={type(value).__name__}"
+        )
+
+    try:
+        raw_bytes = bytes(
+            ((int(item) % 256) + 256) % 256
+            for item in value
+        )
+
+    except (TypeError, ValueError, OverflowError) as exc:
+        raise ValueError(
+            "request.log_content 배열에는 정수로 변환 가능한 값만 "
+            "포함되어야 합니다."
+        ) from exc
+
+    return raw_bytes.decode(
+        "utf-8",
+        errors="replace",
+    )
 
 
 # ---------------------------------------------------------------------
@@ -322,6 +414,7 @@ def parse_timestamp(value: Any) -> datetime:
 
     try:
         parsed = datetime.fromisoformat(text)
+
     except ValueError as exc:
         raise ValueError(
             f"지원하지 않는 timestamp 형식입니다: {value}"
@@ -413,8 +506,20 @@ def transform_record(
         dotted_key="request.log_type",
     )
 
-    # request.log_content는 의도적으로 읽지 않는다.
-    # 따라서 RDS에도 적재되지 않는다.
+    # request.log_type이 1인 경우에만
+    # request.log_content를 디코딩하여 저장한다.
+    request_log_content = None
+
+    if is_log_type_one(request_log_type):
+        encoded_log_content = get_nested_or_dotted_value(
+            record=record,
+            nested_key="log_content",
+            dotted_key="request.log_content",
+        )
+
+        request_log_content = decode_log_content(
+            encoded_log_content
+        )
 
     return (
         build_source_event_id(
@@ -430,6 +535,7 @@ def transform_record(
         request_log_id,
         to_mysql_json(request_log_meta),
         request_log_type,
+        request_log_content,
         str(serial),
         parse_timestamp(record.get("timestamp")),
         bucket,

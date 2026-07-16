@@ -78,3 +78,10 @@ ENGINE = InnoDB
 DEFAULT CHARACTER SET = utf8mb4
 COLLATE = utf8mb4_unicode_ci
 COMMENT = 'S3에 적재된 Airbot AI 로그 중 request.log_content를 제외한 API 조회용 데이터';
+
+
+
+ALTER TABLE airbot_ai_function_token_log
+ADD COLUMN request_log_content LONGTEXT NULL
+    COMMENT 'request.log_type이 1인 경우 signed byte 배열을 UTF-8로 디코딩한 로그 내용'
+AFTER request_log_type;
