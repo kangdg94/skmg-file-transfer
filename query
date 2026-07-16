@@ -1,25 +1,16 @@
-SET SESSION group_concat_max_len = 1000000;
-
-SELECT GROUP_CONCAT(
-    CONCAT(
-        'SELECT ''', c.table_name, ''' AS table_name, ',
-        '''', c.column_name, ''' AS date_column, ',
-        'DATE_FORMAT(`', c.column_name, '`, ''%Y-%m'') AS ym, ',
-        'COUNT(*) AS row_count, ',
-        'ROUND(COUNT(*) * ', IFNULL(t.avg_row_length,0), ' /1024/1024, 2) AS estimated_mb ',
-        'FROM `', c.table_schema, '`.`', c.table_name, '` ',
-        'WHERE `', c.column_name, '` IS NOT NULL ',
-        'GROUP BY DATE_FORMAT(`', c.column_name, '`, ''%Y-%m'')'
-    )
-    SEPARATOR ' UNION ALL '
-) INTO @sql
-FROM information_schema.columns c
-JOIN information_schema.tables t
-  ON t.table_schema = c.table_schema
- AND t.table_name = c.table_name
-WHERE c.table_schema = 'kwaterprod'
-  AND c.column_name IN ('create_date','created_at');
-
-PREPARE stmt FROM @sql;
-EXECUTE stmt;
-DEALLOCATE PREPARE stmt;
+{
+  "Records": [
+    {
+      "eventSource": "aws:s3",
+      "eventName": "ObjectCreated:Put",
+      "s3": {
+        "bucket": {
+          "name": "skmg-benjamin-prd-s3-lake"
+        },
+        "object": {
+          "key": "skmg_airbot_v1_AILogData/year=2026/month=07/hour=21/202607162101.json.gz"
+        }
+      }
+    }
+  ]
+}
