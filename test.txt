@@ -1,29 +1,57 @@
 CREATE TABLE airbot_ai_log (
-    id BIGINT NOT NULL AUTO_INCREMENT,
+    id BIGINT NOT NULL AUTO_INCREMENT
+        COMMENT 'AI 로그 데이터 내부 관리 ID',
 
-    -- S3 객체와 객체 내부 순번을 기준으로 생성한 중복 방지 키
-    source_event_id CHAR(64) NOT NULL,
+    source_event_id CHAR(64) NOT NULL
+        COMMENT 'S3 버킷, 객체 키, ETag, 레코드 순번을 조합한 SHA-256 중복 방지 키',
 
-    topic VARCHAR(512),
-    message_prefix VARCHAR(255),
-    correlation_id VARCHAR(255),
-    reply_to VARCHAR(512),
+    topic VARCHAR(512) NULL
+        COMMENT '메시지 또는 MQTT 토픽',
 
-    request_log_id VARCHAR(255),
-    request_log_meta JSON,
-    request_log_type VARCHAR(100),
+    message_prefix VARCHAR(255) NULL
+        COMMENT '원본 JSON의 prefix 값',
 
-    serial_number VARCHAR(100) NOT NULL,
-    event_timestamp DATETIME(3) NOT NULL,
+    correlation_id VARCHAR(255) NULL
+        COMMENT '요청과 응답 간 연관관계를 식별하는 Correlation ID',
 
-    source_bucket VARCHAR(255) NOT NULL,
-    source_object_key VARCHAR(1024) NOT NULL,
-    source_etag VARCHAR(255),
-    source_record_index INT NOT NULL,
+    reply_to VARCHAR(512) NULL
+        COMMENT '응답 메시지를 전달할 대상 토픽 또는 주소',
 
-    created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
-    updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3)
-        ON UPDATE CURRENT_TIMESTAMP(3),
+    request_log_id VARCHAR(255) NULL
+        COMMENT '원본 JSON의 request.log_ID 값',
+
+    request_log_meta JSON NULL
+        COMMENT '원본 JSON의 request.log_meta 부가정보',
+
+    request_log_type VARCHAR(100) NULL
+        COMMENT '원본 JSON의 request.log_type 로그 유형',
+
+    serial_number VARCHAR(100) NOT NULL
+        COMMENT 'Airbot 장비 또는 단말 시리얼 번호',
+
+    event_timestamp DATETIME(3) NOT NULL
+        COMMENT '로그 발생 시각, Lambda에서 UTC 기준으로 변환하여 저장',
+
+    source_bucket VARCHAR(255) NOT NULL
+        COMMENT '원본 JSON 파일이 저장된 S3 버킷명',
+
+    source_object_key VARCHAR(1024) NOT NULL
+        COMMENT '원본 JSON 파일의 S3 객체 키 전체 경로',
+
+    source_etag VARCHAR(255) NULL
+        COMMENT '원본 S3 객체의 ETag 값',
+
+    source_record_index INT NOT NULL
+        COMMENT '하나의 JSON 파일 내 레코드 순번, 0부터 시작',
+
+    created_at DATETIME(3) NOT NULL
+        DEFAULT CURRENT_TIMESTAMP(3)
+        COMMENT 'RDS 최초 적재 일시',
+
+    updated_at DATETIME(3) NOT NULL
+        DEFAULT CURRENT_TIMESTAMP(3)
+        ON UPDATE CURRENT_TIMESTAMP(3)
+        COMMENT 'RDS 데이터 최종 수정 일시',
 
     PRIMARY KEY (id),
 
@@ -45,4 +73,8 @@ CREATE TABLE airbot_ai_log (
     KEY idx_airbot_request_log_id (
         request_log_id
     )
-);
+)
+ENGINE = InnoDB
+DEFAULT CHARACTER SET = utf8mb4
+COLLATE = utf8mb4_unicode_ci
+COMMENT = 'S3에 적재된 Airbot AI 로그 중 request.log_content를 제외한 API 조회용 데이터';
