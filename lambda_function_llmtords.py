@@ -583,6 +583,29 @@ def process_s3_object(
         )
         return 0
 
+    filtered_records = [
+        (index, record)
+        for index, record in enumerate(records)
+        if is_log_type_one(
+            get_nested_or_dotted_value(
+                record=record,
+                nested_key="log_type",
+                dotted_key="request.log_type",
+            )
+        )
+    ]
+
+    LOGGER.info(
+        "request_log_type=1 필터링: total=%d, matched=%d, "
+        "object_key=%s",
+        len(records),
+        len(filtered_records),
+        object_key,
+    )
+
+    if not filtered_records:
+        return 0
+
     values = [
         transform_record(
             record=record,
@@ -591,7 +614,7 @@ def process_s3_object(
             etag=etag,
             record_index=index,
         )
-        for index, record in enumerate(records)
+        for index, record in filtered_records
     ]
 
     connection = get_db_connection()
