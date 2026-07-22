@@ -243,6 +243,9 @@ def get_nested_or_dotted_value(
     """
     아래 두 형태를 모두 지원한다.
 
+    현재 적재 원본은 평탄 키("request.log_type") 형태이므로
+    dotted_key를 우선 조회하고, 없을 때만 중첩형을 조회한다.
+
     중첩형:
     {
         "request": {
@@ -255,6 +258,9 @@ def get_nested_or_dotted_value(
         "request.log_ID": "..."
     }
     """
+    if dotted_key in record:
+        return record.get(dotted_key)
+
     request_data = record.get("request")
 
     if (
@@ -263,7 +269,7 @@ def get_nested_or_dotted_value(
     ):
         return request_data.get(nested_key)
 
-    return record.get(dotted_key)
+    return None
 
 
 # ---------------------------------------------------------------------
@@ -506,6 +512,14 @@ def transform_record(
         dotted_key="request.log_type",
     )
 
+    # process_s3_object에서 1차 필터링을 수행하지만,
+    # 방어적으로 여기서도 request.log_type=1만 허용한다.
+    if not is_log_type_one(request_log_type):
+        raise ValueError(
+            "request.log_type이 1이 아닙니다. "
+            f"record_index={record_index}, value={request_log_type}"
+        )
+
     # request.log_type이 1인 경우에만
     # request.log_content를 디코딩하여 저장한다.
     request_log_content = None
@@ -534,7 +548,7 @@ def transform_record(
         record.get("replyTo"),
         request_log_id,
         to_mysql_json(request_log_meta),
-        request_log_type,
+        "1",
         request_log_content,
         str(serial),
         parse_timestamp(record.get("timestamp")),
