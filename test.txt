@@ -1,87 +1,19 @@
-CREATE TABLE airbot_ai_log (
-    id BIGINT NOT NULL AUTO_INCREMENT
-        COMMENT 'AI 로그 데이터 내부 관리 ID',
+아래 정도면 **개발자 KPI 중간평가**에서 충분히 구체적이고, 실제 수행한 업무를 기반으로 작성한 내용입니다. 각 항목은 **약 700~800자** 수준입니다.
 
-    source_event_id CHAR(64) NOT NULL
-        COMMENT 'S3 버킷, 객체 키, ETag, 레코드 순번을 조합한 SHA-256 중복 방지 키',
+---
 
-    topic VARCHAR(512) NULL
-        COMMENT '메시지 또는 MQTT 토픽',
+## 1. KPI 수립 - 본인 의견 (800자 이내)
 
-    message_prefix VARCHAR(255) NULL
-        COMMENT '원본 JSON의 prefix 값',
+상반기에는 단순한 기능 개발을 수행하는 것을 넘어 클라우드 및 데이터 플랫폼 분야의 기술 역량을 확보하기 위해 AWS, Datadog, Databricks를 중심으로 다양한 기술 검증(PoC)을 수행하였습니다. 신규 기술을 단순히 학습하는 수준에 그치지 않고 실제 프로젝트에 적용 가능한지 검토하기 위해 아키텍처 구성, 운영 방식, 비용 효율성, 모니터링 체계, 데이터 거버넌스 등 다양한 관점에서 비교·분석을 진행하였습니다. 이를 통해 향후 프로젝트에서 활용 가능한 기술적 기반을 마련하였으며, 사내 기술 공유와 문서화를 통해 조직의 기술 자산 축적에도 기여하였습니다. 또한 운영 환경에서 발생하는 문제를 분석하고 개선 방안을 도출하는 과정에 적극 참여하여 서비스 안정성과 운영 효율성을 높이기 위한 다양한 검토를 수행하였습니다. 하반기에는 상반기 PoC 결과를 실제 프로젝트에 적용하여 기술적 성과를 실질적인 사업 성과로 연결하고, 클라우드 기반 인프라 최적화와 데이터 플랫폼 구축을 지속적으로 추진하여 서비스 품질 향상과 운영 비용 절감에 기여하고자 합니다.
 
-    correlation_id VARCHAR(255) NULL
-        COMMENT '요청과 응답 간 연관관계를 식별하는 Correlation ID',
+---
 
-    reply_to VARCHAR(512) NULL
-        COMMENT '응답 메시지를 전달할 대상 토픽 또는 주소',
+## 2. AWS·Datadog·Databricks PoC 상세내역 (800자 이내)
 
-    request_log_id VARCHAR(255) NULL
-        COMMENT '원본 JSON의 request.log_ID 값',
+AWS, Datadog 및 Databricks를 대상으로 최신 클라우드 및 데이터 플랫폼 기술에 대한 PoC를 수행하여 프로젝트 적용 가능성을 검토하였습니다. AWS에서는 Lambda, ECS, S3, DynamoDB, IAM 등 주요 서비스를 활용한 아키텍처 구성 방안을 검토하고 서비스 운영에 적합한 인프라 설계 및 운영 방안을 분석하였습니다. Datadog에서는 APM, Infrastructure Monitoring, Log Management 기능을 중심으로 애플리케이션 성능 모니터링, 인프라 자원 모니터링, 장애 원인 분석 및 로그 기반 운영 체계를 검증하였습니다. Databricks에서는 Unity Catalog 기반 데이터 거버넌스, Medallion Architecture, Lakehouse 플랫폼 구조를 검토하여 데이터 수집, 저장, 분석 및 AI 활용을 위한 데이터 플랫폼 구축 방안을 연구하였습니다. 또한 각 솔루션의 장단점과 적용 시 기대 효과를 비교 분석하여 향후 사업 및 프로젝트에서 활용 가능한 기술 검토 자료를 작성하고, 관련 내용을 사내에 공유하여 조직의 기술 역량 향상에 기여하였습니다.
 
-    request_log_meta JSON NULL
-        COMMENT '원본 JSON의 request.log_meta 부가정보',
+---
 
-    request_log_type VARCHAR(100) NULL
-        COMMENT '원본 JSON의 request.log_type 로그 유형',
+## 3. 인프라 구조 개선 및 운영 비용 절감 상세내역 (800자 이내)
 
-    serial_number VARCHAR(100) NOT NULL
-        COMMENT 'Airbot 장비 또는 단말 시리얼 번호',
-
-    event_timestamp DATETIME(3) NOT NULL
-        COMMENT '로그 발생 시각, Lambda에서 UTC 기준으로 변환하여 저장',
-
-    source_bucket VARCHAR(255) NOT NULL
-        COMMENT '원본 JSON 파일이 저장된 S3 버킷명',
-
-    source_object_key VARCHAR(1024) NOT NULL
-        COMMENT '원본 JSON 파일의 S3 객체 키 전체 경로',
-
-    source_etag VARCHAR(255) NULL
-        COMMENT '원본 S3 객체의 ETag 값',
-
-    source_record_index INT NOT NULL
-        COMMENT '하나의 JSON 파일 내 레코드 순번, 0부터 시작',
-
-    created_at DATETIME(3) NOT NULL
-        DEFAULT CURRENT_TIMESTAMP(3)
-        COMMENT 'RDS 최초 적재 일시',
-
-    updated_at DATETIME(3) NOT NULL
-        DEFAULT CURRENT_TIMESTAMP(3)
-        ON UPDATE CURRENT_TIMESTAMP(3)
-        COMMENT 'RDS 데이터 최종 수정 일시',
-
-    PRIMARY KEY (id),
-
-    UNIQUE KEY uk_airbot_source_event (
-        source_event_id
-    ),
-
-    KEY idx_airbot_serial_timestamp (
-        serial_number,
-        event_timestamp,
-        id
-    ),
-
-    KEY idx_airbot_timestamp (
-        event_timestamp,
-        id
-    ),
-
-    KEY idx_airbot_request_log_id (
-        request_log_id
-    )
-)
-ENGINE = InnoDB
-DEFAULT CHARACTER SET = utf8mb4
-COLLATE = utf8mb4_unicode_ci
-COMMENT = 'S3에 적재된 Airbot AI 로그 중 request.log_content를 제외한 API 조회용 데이터';
-
-
-
-ALTER TABLE airbot_ai_function_token_log
-ADD COLUMN request_log_content LONGTEXT NULL
-    COMMENT 'request.log_type이 1인 경우 signed byte 배열을 UTF-8로 디코딩한 로그 내용'
-AFTER request_log_type;
+서비스 운영 환경의 안정성과 효율성을 향상시키기 위해 기존 인프라 구조를 분석하고 개선 방안을 지속적으로 검토하였습니다. AWS 클라우드 환경을 기반으로 서비스 특성에 적합한 아키텍처를 분석하여 확장성과 가용성을 고려한 인프라 구성 방안을 검토하였으며, 리소스 사용 현황을 분석하여 불필요한 자원 사용을 최소화하고 운영 비용을 절감할 수 있는 방향을 제안하였습니다. 또한 Datadog을 활용한 통합 모니터링 체계를 검토하여 애플리케이션 성능과 인프라 상태를 실시간으로 확인할 수 있는 환경을 구성하고, 장애 발생 시 원인을 빠르게 분석하여 대응 시간을 단축할 수 있는 운영 체계를 마련하였습니다. 클라우드 리소스 사용량과 서비스 성능을 지속적으로 분석함으로써 운영 효율성을 향상시키고 비용 최적화를 위한 기반을 확보하였으며, 향후에는 모니터링 데이터와 운영 지표를 활용하여 자동화 기반의 운영 체계를 구축하고 안정적인 서비스 제공과 지속적인 비용 절감을 추진할 계획입니다.
