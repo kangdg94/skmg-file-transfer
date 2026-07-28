@@ -1,9 +1,32 @@
-안녕하세요.
-
-BI 사이트의 OTA 통계와 매니저님께서 산출하신 OTA 통계 값에 차이가 있어, BI 사이트의 통계 로직을 점검 및 보완하고자 합니다.
-
-매니저님께서 OTA 통계를 산출하실 때 사용하시는 기준 및 로직을 공유해 주시면, 해당 로직을 BI 사이트에 반영하여 동일한 기준으로 통계가 산출될 수 있도록 작업을 진행하겠습니다.
-
-번거로우시겠지만, 관련 로직을 공유해 주시면 감사하겠습니다.
-
-감사합니다.
+{
+  "permissions": {
+    "allow": [
+      "Read",
+      "Grep",
+      "Glob",
+      "Bash(rg:*)",
+      "Bash(grep:*)",
+      "Bash(sed -n:*)",
+      "Bash(cat:*)",
+      "Bash(head:*)",
+      "Bash(tail:*)",
+      "Bash(wc:*)",
+      "Bash(ls:*)",
+      "Bash(find:*)",
+      "Bash(tree:*)",
+      "Bash(xxd:*)",
+      "Bash(git log:*)",
+      "Bash(git show:*)",
+      "Bash(git diff:*)",
+      "Bash(git blame:*)",
+      "Bash(git status:*)",
+      "Bash(git branch:*)"
+    ],
+    "deny": [
+      "Bash(git push:*)",
+      "Bash(git commit:*)",
+      "Bash(rm:*)"
+    ]
+  },
+  "spinnerTipsEnabled": true
+}
