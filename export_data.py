@@ -79,9 +79,7 @@ def export_one_day(
 
     serial_filename = safe_filename(serial)
     output_file = output_directory / (
-        f"history_airbot_air_quality_"
-        f"{serial_filename}_"
-        f"{target_date:%Y%m%d}.csv"
+    f"{serial_filename}_{target_date:%Y%m%d}.csv"
     )
 
     temporary_file = output_file.with_suffix(".csv.tmp")
@@ -197,8 +195,9 @@ def build_parser() -> argparse.ArgumentParser:
 
     parser.add_argument(
         "--serial",
+        nargs="+",
         required=True,
-        help="조회할 serial 값. 예: test",
+        help="조회할 serial 값 목록. 예: test1 test2 test3",
     )
 
     parser.add_argument(
@@ -303,7 +302,7 @@ def main() -> int:
     print(f"DB Host      : {args.host}")
     print(f"DB Port      : {args.port}")
     print(f"DB User      : {args.user}")
-    print(f"Serial       : {args.serial}")
+    print(f"Serial 목록  : {', '.join(args.serial)}")
     print(f"기간         : {args.start_date} ~ {args.end_date}")
     print(f"저장 경로    : {output_directory}")
     print(f"기존 파일 덮어쓰기: {args.overwrite}")
@@ -321,70 +320,90 @@ def main() -> int:
         connection = create_connection(args)
         print("[연결 성공] Aurora MySQL")
 
-        current_date = args.start_date
+        for serial in args.serial:
+    print("")
+    print("==================================================")
+    print(f"Serial 추출 시작: {serial}")
+    print("==================================================")
 
-        while current_date <= args.end_date:
-            display_date = current_date.isoformat()
+    current_date = args.start_date
 
-            try:
-                print(f"[시작] {display_date}")
+    while current_date <= args.end_date:
+        display_date = current_date.isoformat()
 
-                output_file, row_count = export_one_day(
-                    connection=connection,
-                    serial=args.serial,
-                    target_date=current_date,
-                    output_directory=output_directory,
-                    overwrite=args.overwrite,
-                    keep_empty=args.keep_empty,
-                )
+        try:
+            print(
+                f"[시작] serial={serial}, "
+                f"date={display_date}"
+            )
 
-                if row_count == -1:
-                    skipped_count += 1
-                    print(
-                        f"[건너뜀] {display_date}: "
-                        f"기존 파일 존재 → {output_file}"
-                    )
+            output_file, row_count = export_one_day(
+                connection=connection,
+                serial=serial,
+                target_date=current_date,
+                output_directory=output_directory,
+                overwrite=args.overwrite,
+                keep_empty=args.keep_empty,
+            )
 
-                elif row_count == 0:
-                    empty_count += 1
-
-                    if output_file is None:
-                        print(f"[데이터 없음] {display_date}: 파일 생성 안 함")
-                    else:
-                        print(
-                            f"[데이터 없음] {display_date}: "
-                            f"헤더 파일 생성 → {output_file}"
-                        )
-
-                else:
-                    success_count += 1
-                    total_rows += row_count
-
-                    print(
-                        f"[완료] {display_date}: "
-                        f"{row_count:,}건 → {output_file}"
-                    )
-
-            except Exception as exc:
-                failed_count += 1
+            if row_count == -1:
+                skipped_count += 1
 
                 print(
-                    f"[실패] {display_date}: "
-                    f"{type(exc).__name__}: {exc}",
-                    file=sys.stderr,
+                    f"[건너뜀] serial={serial}, "
+                    f"date={display_date}: "
+                    f"기존 파일 존재 → {output_file}"
                 )
 
-                if args.stop_on_error:
-                    raise
+            elif row_count == 0:
+                empty_count += 1
 
-                # 다음 날짜 조회 전에 연결 복구 시도
+                if output_file is None:
+                    print(
+                        f"[데이터 없음] serial={serial}, "
+                        f"date={display_date}: 파일 생성 안 함"
+                    )
+                else:
+                    print(
+                        f"[데이터 없음] serial={serial}, "
+                        f"date={display_date}: "
+                        f"헤더 파일 생성 → {output_file}"
+                    )
+
+            else:
+                success_count += 1
+                total_rows += row_count
+
+                print(
+                    f"[완료] serial={serial}, "
+                    f"date={display_date}: "
+                    f"{row_count:,}건 → {output_file}"
+                )
+
+        except Exception as exc:
+            failed_count += 1
+
+            print(
+                f"[실패] serial={serial}, "
+                f"date={display_date}: "
+                f"{type(exc).__name__}: {exc}",
+                file=sys.stderr,
+            )
+
+            if args.stop_on_error:
+                raise
+
+            try:
+                connection.ping(reconnect=True)
+            except Exception:
                 try:
-                    connection.ping(reconnect=True)
-                except Exception:
                     connection.close()
-                    connection = create_connection(args)
+                except Exception:
+                    pass
 
-            current_date += timedelta(days=1)
+                connection = create_connection(args)
+
+        current_date += timedelta(days=1)
 
     except KeyboardInterrupt:
         print("\n[중단] 사용자에 의해 작업이 중단되었습니다.")
