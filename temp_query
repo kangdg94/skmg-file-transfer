@@ -13,3 +13,49 @@ FROM (
   WHERE d.linked_yn = 'Y' AND d.device_type = 'ABT'
   GROUP BY d.serial
 ) t;
+
+
+SELECT
+    COUNT(*) AS linked_total,
+
+    -- 최근 3일 이내 데이터가 없는 전체 장비
+    SUM(
+        last_data_date IS NULL
+        OR last_data_date < NOW() - INTERVAL 3 DAY
+    ) AS no_data_within_3d,
+
+    -- 마지막 데이터 수신 시점별 상세 구간
+    SUM(
+        last_data_date < NOW() - INTERVAL 3 DAY
+        AND last_data_date >= NOW() - INTERVAL 7 DAY
+    ) AS off_3_7d,
+
+    SUM(
+        last_data_date < NOW() - INTERVAL 7 DAY
+        AND last_data_date >= NOW() - INTERVAL 15 DAY
+    ) AS off_7_15d,
+
+    SUM(
+        last_data_date < NOW() - INTERVAL 15 DAY
+        AND last_data_date >= NOW() - INTERVAL 30 DAY
+    ) AS off_15_30d,
+
+    SUM(
+        last_data_date < NOW() - INTERVAL 30 DAY
+    ) AS off_over_30d,
+
+    SUM(
+        last_data_date IS NULL
+    ) AS off_never
+
+FROM (
+    SELECT
+        d.serial,
+        MAX(so.create_date) AS last_data_date
+    FROM device d
+    LEFT JOIN statistics_operation so
+        ON so.device_id = d.id
+    WHERE d.linked_yn = 'Y'
+      AND d.device_type = 'ABT'
+    GROUP BY d.serial
+) t;
