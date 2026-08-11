@@ -1,22 +1,50 @@
-항목 / 샘플
-주문번호 / T267RB2082164
-유통그룹명 / 구독-오프라인
-유통그룹코드 / RB
-주문상태 / 계약확정
-주문상태코드 / 020
-주문일자 / 2026-07-31
-설치요청일자 / 2026-08-03
-설치일자 / 2026-08-03
-계약자고객번호 / 201904250892
-고객유형 / 개인
-고객유형코드 / PR
-주문QR정보 / WRBA1M10KRDWJ0726A00386
-설치QR정보 / WRBA1M10KRDWJ0726A00386
-제조번호 / J0726A00386
-LIM이용동의 / Y
-LIM수집동의 / Y
-고객명 / 남**
-계약자생년 / 1970
-성명 / 남**
-고객 / 그룹유형(VIP 구분)
-설치장소(시/도/광역시~구/군까지) / 강원특별자치도 원주시 우산동
+WITH contract AS (
+    SELECT id, user_id, contract_no, create_date as contract_date
+    FROM contract
+),
+active_device AS (
+    SELECT id, building_id, contract_id, serial, device_name
+    FROM device
+    WHERE device_type = 'ABT' AND linked_yn = 'Y'
+),
+latest_user_app_info_cte AS (
+    SELECT login_id, app_version, update_date as app_update_date
+    FROM (
+        SELECT login_id, app_version, update_date,
+               ROW_NUMBER() OVER (PARTITION BY login_id ORDER BY update_date DESC) AS rn
+        FROM history_user_app_info
+    ) t
+    WHERE t.rn = 1
+),
+latest_so_version AS (
+    SELECT device_id, version
+    FROM (
+        SELECT device_id, version,
+               ROW_NUMBER() OVER (PARTITION BY device_id ORDER BY create_date DESC) as rn
+        FROM statistics_operation
+    ) t
+    WHERE t.rn = 1
+)
+
+SELECT
+    u.login_id,
+    c.contract_date,
+    ad.serial,
+    ad.device_name,
+    app.app_version,
+    so.version AS op_version,
+    COALESCE(lv.is_live_view, 'N') AS live_view_yn
+FROM user u
+-- 유저가 디바이스가 없어도 조회
+LEFT JOIN user_building ub ON u.id = ub.user_id
+LEFT JOIN active_device ad ON ub.id = ad.building_id
+LEFT JOIN contract c ON ad.contract_id = c.id
+LEFT JOIN latest_user_app_info_cte app ON u.login_id = app.login_id
+LEFT JOIN latest_so_version so ON ad.id = so.device_id
+
+LEFT JOIN (
+    SELECT user_id, 'Y' AS is_live_view
+    FROM history_streaming
+    GROUP BY user_id
+) lv ON u.login_id = lv.user_id
+ORDER BY u.login_id;
