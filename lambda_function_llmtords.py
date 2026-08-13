@@ -20,14 +20,100 @@ LOGGER = logging.getLogger()
 LOGGER.setLevel(os.environ.get("LOG_LEVEL", "INFO"))
 
 S3_CLIENT = boto3.client("s3")
+SECRETS_CLIENT = boto3.client("secretsmanager")
 
 DB_CONNECTION = None
 
-DB_HOST = os.environ["DB_HOST"]
-DB_PORT = int(os.environ.get("DB_PORT", "3306"))
-DB_NAME = os.environ["DB_NAME"]
-DB_USER = os.environ["DB_USER"]
-DB_PASSWORD = os.environ["DB_PASSWORD"]
+# Secrets Manager에 저장된 RDS 접속 정보 시크릿 이름
+DB_SECRET_NAME = os.environ.get("DB_SECRET_NAME", "lambda_RDS_key")
+
+# Secrets Manager 조회 결과 캐시 (Lambda 실행 환경 재사용 시 재조회 방지)
+DB_SECRET_CACHE: Optional[Dict[str, Any]] = None
+
+
+def get_db_secret() -> Dict[str, Any]:
+    """
+    Secrets Manager에서 RDS 접속 정보를 조회한다.
+
+    시크릿은 아래와 같은 JSON 형태를 가정한다.
+    {
+        "host": "...",
+        "port": 3306,
+        "dbname": "...",
+        "username": "...",
+        "password": "..."
+    }
+
+    조회 결과는 캐시하여 Lambda 실행 환경이 재사용될 때
+    반복 호출을 피한다.
+    """
+    global DB_SECRET_CACHE
+
+    if DB_SECRET_CACHE is not None:
+        LOGGER.info(
+            "Secrets Manager 캐시 사용: secret_name=%s",
+            DB_SECRET_NAME,
+        )
+        return DB_SECRET_CACHE
+
+    LOGGER.info(
+        "Secrets Manager 조회 시작: secret_name=%s",
+        DB_SECRET_NAME,
+    )
+
+    try:
+        response = SECRETS_CLIENT.get_secret_value(
+            SecretId=DB_SECRET_NAME,
+        )
+    except Exception as exc:
+        LOGGER.error(
+            "Secrets Manager 조회 실패: secret_name=%s, error=%s",
+            DB_SECRET_NAME,
+            exc,
+        )
+        raise
+
+    LOGGER.info(
+        "Secrets Manager 조회 응답 수신: secret_name=%s, "
+        "has_secret_string=%s, has_secret_binary=%s",
+        DB_SECRET_NAME,
+        "SecretString" in response and response.get("SecretString") is not None,
+        "SecretBinary" in response and response.get("SecretBinary") is not None,
+    )
+
+    secret_string = response.get("SecretString")
+
+    if not secret_string:
+        LOGGER.error(
+            "Secrets Manager 시크릿에 SecretString이 없습니다: "
+            "secret_name=%s",
+            DB_SECRET_NAME,
+        )
+        raise ValueError(
+            "Secrets Manager 시크릿에 SecretString이 없습니다. "
+            f"secret_name={DB_SECRET_NAME}"
+        )
+
+    try:
+        secret = json.loads(secret_string)
+    except json.JSONDecodeError as exc:
+        LOGGER.error(
+            "Secrets Manager 시크릿 JSON 파싱 실패: "
+            "secret_name=%s, error=%s",
+            DB_SECRET_NAME,
+            exc,
+        )
+        raise
+
+    LOGGER.info(
+        "Secrets Manager 조회 완료: secret_name=%s, keys=%s",
+        DB_SECRET_NAME,
+        sorted(secret.keys()) if isinstance(secret, dict) else type(secret).__name__,
+    )
+
+    DB_SECRET_CACHE = secret
+
+    return secret
 
 # timestamp에 타임존 정보가 없을 때 적용할 기준 시간대
 SOURCE_TIMEZONE = ZoneInfo(
@@ -97,18 +183,45 @@ def get_db_connection():
     global DB_CONNECTION
 
     if DB_CONNECTION is None:
-        DB_CONNECTION = pymysql.connect(
-            host=DB_HOST,
-            port=DB_PORT,
-            user=DB_USER,
-            password=DB_PASSWORD,
-            database=DB_NAME,
-            charset="utf8mb4",
-            autocommit=False,
-            connect_timeout=5,
-            read_timeout=20,
-            write_timeout=20,
+        secret = get_db_secret()
+
+        LOGGER.info(
+            "DB 연결 시도: host=%s, port=%s, dbname=%s, user=%s",
+            secret.get("host"),
+            secret.get("port", 3306),
+            secret.get("dbname"),
+            secret.get("username"),
         )
+
+        try:
+            DB_CONNECTION = pymysql.connect(
+                host=secret["host"],
+                port=int(secret.get("port", 3306)),
+                user=secret["username"],
+                password=secret["password"],
+                database=secret["dbname"],
+                charset="utf8mb4",
+                autocommit=False,
+                connect_timeout=5,
+                read_timeout=20,
+                write_timeout=20,
+            )
+        except KeyError as exc:
+            LOGGER.error(
+                "시크릿에 필수 키가 없습니다: missing_key=%s, "
+                "available_keys=%s",
+                exc,
+                sorted(secret.keys()) if isinstance(secret, dict) else None,
+            )
+            raise
+        except Exception as exc:
+            LOGGER.error(
+                "DB 연결 실패: error=%s",
+                exc,
+            )
+            raise
+
+        LOGGER.info("DB 연결 성공")
     else:
         DB_CONNECTION.ping(reconnect=True)
 

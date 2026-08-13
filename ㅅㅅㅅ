@@ -1,26 +1,29 @@
-import boto3
+┌───────────────────────┬───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+│         항목          │                                                       내용                                                        │
+├───────────────────────┼───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ Method / URL          │ POST /api/realcustomer/excel/upload                                                                               │
+├───────────────────────┼───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ 인증                  │ 필요 — Authorization 헤더에 JWT                                                                                   │
+├───────────────────────┼───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ Request Content-Type  │ multipart/form-data                                                                                               │
+├───────────────────────┼───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ Response Content-Type │ 성공: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet (xlsx 바이너리)<br>실패: application/json │
+└───────────────────────┴───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
 
-secrets_client = boto3.client("secretsmanager")
+---
+Request
 
+┌──────────┬──────────────┬──────┬─────────────────────────────────────┐
+│ 파라미터 │     타입     │ 필수 │                설명                 │
+├──────────┼──────────────┼──────┼─────────────────────────────────────┤
+│ file     │ File (.xlsx) │  O   │ 업로드할 엑셀 파일. 파라미터명 고정 │
+└──────────┴──────────────┴──────┴─────────────────────────────────────┘
 
-def get_secret():
-    secret_name = os.environ["SECRET_NAME"]
+▎ loginId, lang은 서버가 JWT 토큰에서 꺼내 쓰므로 프론트에서 보낼 필요 없습니다.
 
-    response = secrets_client.get_secret_value(
-        SecretId=secret_name
-    )
+요청 예제 (curl)
 
-    return json.loads(response["SecretString"])
-
-
-def lambda_handler(event, context):
-    secret = get_secret()
-
-    db_host = secret["DB_HOST"]
-    db_user = secret["DB_USER"]
-    db_password = secret["DB_PASSWORD"]
-
-    return {
-        "statusCode": 200,
-        "body": "Secret 조회 성공"
-    }
+curl -X POST 'https://{host}/api/realcustomer/excel/upload' \
+  -H 'Authorization: Bearer {accessToken}' \
+  -F 'file=@실고객_업로드_양식.xlsx' \
+  -o result.xlsx
