@@ -1,1 +1,36 @@
-a4719cc3545904fa2b2ec43ac04d7619
+1. 업로드
+
+POST /api/realcustomer/excel/upload
+Content-Type: multipart/form-data
+요청 — file (필수, .xlsx/.xls, 첫 시트만 읽음)
+
+응답 (성공)
+{"result":200,"message":"OK","success":true,
+ "data":{"baseDate":"2026-08-19","readCount":5231,"processedCount":4980,"savedCount":4978}}
+필드	의미
+baseDate	적재 기준일자(서버 기준 업로드일).
+readCount	엑셀에서 읽은 행 수
+processedCount	주문상태 계약확정 필터 통과 건수
+savedCount	DB 적재 건수 = 다운로드 엑셀 행 수 (주문번호 빈 행 제외)
+
+응답 (실패) {"result":200,"message":"<사유>","success":false}
+업로드된 엑셀 파일이 없습니다. / 엑셀에 데이터가 없습니다.
+엑셀에서 헤더 행을 찾을 수 없습니다. 필수 컬럼: {목록}
+엑셀에 필수 컬럼이 없습니다: {누락}
+엑셀 업로드에 실패했습니다.
+
+
+2. 다운로드
+
+GET /api/realcustomer/excel/download?baseDate=2026-08-19
+요청 — baseDate (선택, yyyy-MM-dd). 생략 시 가장 최근 적재분
+
+응답 (성공) — xlsx 바이너리
+Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
+Content-Disposition: attachment; filename="..."; filename*=UTF-8''실고객_전처리_20260819.xlsx
+
+응답 (실패) — JSON success:false
+기준일자 형식이 올바르지 않습니다. (yyyy-MM-dd)
+다운로드할 데이터가 없습니다. 엑셀을 먼저 업로드해 주세요.
+기준일자 {날짜} 로 적재된 데이터가 없습니다.
+엑셀 다운로드에 실패했습니다.
