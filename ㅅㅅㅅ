@@ -1,3 +1,30 @@
-NjlkY2Y1Mjk2YmI1MGVkOGQ4ZDAwYWQ1ZDU3NDMzNDgyYWVmMDc5MjRiOGU4NzY3Mjc4MjZkNWVjYTI2ZDU5NQ==
-Y2ZkM2IxMTdiMzAwODUxNDRiODM0YTljMzdiMDk2YmViMGUzM2NjMTE4ZDM4ZjRiNzgxZWY1ZWZiMTc3Mjg3YQ==
-MGY1Y2Q3N2I3ZDBjMWE5YmU2YmQzYTg4NmMyNjBkYzU0ZTc2NjMyNjA0YmI1MDg2ODk4ZTNlM2YwMWI5MTdhNg==
+{"data": [
+  {
+    "ordNo": "T25ARB2284693",
+    "dstrGrpNm": "구독_오프라인",
+    "dstrGrpCd": "RB",
+    "ordStsNm": "계약확정",
+    "ordStsCd": "020",
+    "ordRgstDt": "20251101",
+    "instRqstDt": "20251103",
+    "instDt": "20251103",
+    "cnclDt": null,
+    "ctrtTypeNm": "교체구독",
+    "ctrtTypeCd": "02",
+    "ctrtCntrNo": "2020120411464",
+    "ordPrdtQcrsNo": "WRBA1M10KRDWI0425J00207",
+    "instPrdtQcrsNo": "WRBA1M10KRDWI0425J00207",
+    "prdtMnfctNo": null,
+    "mnxCldLmSvcAgrmYn": "Y",
+    "mnxCldLmIndvCldnAgrmYn": "Y",
+    "cttrCustNm": "홍**",
+    "cttrCustTypeNm": "개인",
+    "cttrCustTypeCd": "PR",
+    "cttrBrth": "1987",
+    "custGrdNm": null,
+    "custGrdCd": null,
+    "instPlcNm": "서울특별시 서대문구"
+  }
+],
+  "interfaceId": "IF_NMX_B015"
+}
