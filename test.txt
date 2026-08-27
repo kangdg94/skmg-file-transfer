@@ -67,3 +67,6 @@ FROM (
   WHERE d.linked_yn = 'Y' AND d.device_type = 'ABT'
   GROUP BY d.serial
 ) t;
+
+
+https://www.figma.com/design/4nNqQFs9nyv5oABngNZOt0/-APP--v1.0_Workspace?node-id=36746-169501&t=yGQJbL89eizU5WSH-4
