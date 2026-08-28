@@ -72,3 +72,8 @@ FROM (
 https://www.figma.com/design/4nNqQFs9nyv5oABngNZOt0/-APP--v1.0_Workspace?node-id=36746-169501&t=yGQJbL89eizU5WSH-4
 grep -E 'Hikari|mariadb|mysql|SocketInputStream|socketRead|HttpClient|RestTemplate|WebClient|OkHttp|connect|read' \
 /tmp/jstack_1.txt | sort | uniq -c | sort -nr | head -30
+
+MWPA1M10KRNGA0425Z00532
+
+검증계_ 구독 해지
+WRBA1M10KRDWJ0125F00850
