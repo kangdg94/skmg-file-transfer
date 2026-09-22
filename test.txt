@@ -1,79 +1,143 @@
-WITH contract AS (
-    SELECT id, user_id, contract_no, create_date as contract_date
-    FROM contract
+SE benjamin;
+SET @start_date = '2026-08-01 00:00:00';
+SET @end_date = '2026-08-31 23:59:59';
+WITH latest_device AS (
+    SELECT serial, id, device_name, device_type
+    FROM (
+        SELECT
+            serial,
+            id,
+            device_name,
+            device_type,
+            ROW_NUMBER() OVER (PARTITION BY serial ORDER BY id DESC) AS rn
+        FROM device
+    ) t
+    WHERE rn = 1
 ),
-active_device AS (
-    SELECT id, building_id, contract_id, serial, device_name
-    FROM device
-    WHERE device_type = 'ABT' AND linked_yn = 'Y'
+clean_summary AS (
+    SELECT
+        serial,
+        SUM(CASE WHEN clean_type_code = 'CLMD0001' THEN 1 ELSE 0 END) AS 고정청정,
+        SUM(CASE WHEN clean_type_code = 'CLMD0002' THEN 1 ELSE 0 END) AS 전체공간청정,
+        SUM(CASE WHEN clean_type_code = 'CLMD0003' AND call_aqm_type = 'NONE' THEN 1 ELSE 0 END) AS 선택공간청정,
+        SUM(CASE WHEN clean_type_code = 'CLMD0003' AND call_aqm_type = 'AUTO' THEN 1 ELSE 0 END) AS 자동호출청정,
+        COUNT(*) AS 총청정횟수
+    FROM history_clean_result
+    WHERE create_date BETWEEN @start_date AND @end_date
+    GROUP BY serial
 ),
-latest_user_app_info_cte AS (
-    SELECT login_id, app_version, update_date as app_update_date
-    FROM (
-        SELECT login_id, app_version, update_date,
-               ROW_NUMBER() OVER (PARTITION BY login_id ORDER BY update_date DESC) AS rn
-        FROM history_user_app_info
-    ) t
-    WHERE t.rn = 1
+llm_summary AS (
+    SELECT
+        device_id,
+        COUNT(*) AS LLM사용
+    FROM cloud_llm_usages
+    WHERE create_date BETWEEN @start_date AND @end_date
+    GROUP BY device_id
 ),
-latest_so_version AS (
-    SELECT device_id, version
-    FROM (
-        SELECT device_id, version,
-               ROW_NUMBER() OVER (PARTITION BY device_id ORDER BY create_date DESC) as rn
-        FROM statistics_operation
-    ) t
-    WHERE t.rn = 1
+vs_summary AS (
+    SELECT
+        deviceSerialNo AS serial,
+        COUNT(*) AS 바이탈사인
+    FROM vital_sign
+    WHERE create_date BETWEEN @start_date AND @end_date
+    GROUP BY deviceSerialNo
+),
+error_summary AS (
+    SELECT
+        serial,
+        COUNT(*) AS 에러횟수
+    FROM history_error
+    WHERE create_date BETWEEN @start_date AND @end_date
+    GROUP BY serial
+),
+streaming_summary AS (
+    SELECT
+        serial,
+        COUNT(
+            CASE
+                WHEN streaming_status IN ('STOPPED', 'UNEXPECTED_CLOSE')
+                THEN 1
+            END
+        ) AS 스트리밍사용
+    FROM history_streaming
+    WHERE requested_at BETWEEN @start_date AND @end_date
+    GROUP BY serial
+),
+follow_summary AS (
+    SELECT
+        serial,
+        COUNT(*) AS 팔로미
+    FROM history_status
+    WHERE status_type = 'FOLLOW_ME'
+      AND status = 'end'
+      AND create_date BETWEEN @start_date AND @end_date
+    GROUP BY serial
 )
-
 SELECT
-    u.login_id,
-    c.contract_date,
-    ad.serial,
-    ad.device_name,
-    app.app_version,
-    so.version AS op_version,
-    COALESCE(lv.is_live_view, 'N') AS live_view_yn
-FROM user u
--- 유저가 디바이스가 없어도 조회
-LEFT JOIN user_building ub ON u.id = ub.user_id
-LEFT JOIN active_device ad ON ub.id = ad.building_id
-LEFT JOIN contract c ON ad.contract_id = c.id
-LEFT JOIN latest_user_app_info_cte app ON u.login_id = app.login_id
-LEFT JOIN latest_so_version so ON ad.id = so.device_id
-
-LEFT JOIN (
-    SELECT user_id, 'Y' AS is_live_view
-    FROM history_streaming
-    GROUP BY user_id
-) lv ON u.login_id = lv.user_id
-ORDER BY u.login_id;
-
-
-
-
-SELECT COUNT(*) AS linked_total,
-
-       SUM(last_data_date IS NULL OR last_data_date < NOW() - INTERVAL 3 DAY)                       AS no_data_within_3d,
-       SUM(last_data_date <  NOW() - INTERVAL 3  DAY AND last_data_date >= NOW() - INTERVAL 7  DAY) AS off_3_7d,
-       SUM(last_data_date <  NOW() - INTERVAL 7  DAY AND last_data_date >= NOW() - INTERVAL 15 DAY) AS off_7_15d,
-       SUM(last_data_date <  NOW() - INTERVAL 15 DAY AND last_data_date >= NOW() - INTERVAL 30 DAY) AS off_15_30d,
-       SUM(last_data_date <  NOW() - INTERVAL 30 DAY)                                               AS off_over_30d,
-       SUM(last_data_date IS NULL)                                                                  AS off_never
-FROM (
-  SELECT d.serial, MAX(so.create_date) AS last_data_date
-  FROM device d
-  LEFT JOIN statistics_operation so ON so.device_id = d.id
-  WHERE d.linked_yn = 'Y' AND d.device_type = 'ABT'
-  GROUP BY d.serial
-) t;
-
-
-https://www.figma.com/design/4nNqQFs9nyv5oABngNZOt0/-APP--v1.0_Workspace?node-id=36746-169501&t=yGQJbL89eizU5WSH-4
-grep -E 'Hikari|mariadb|mysql|SocketInputStream|socketRead|HttpClient|RestTemplate|WebClient|OkHttp|connect|read' \
-/tmp/jstack_1.txt | sort | uniq -c | sort -nr | head -30
-
-MWPA1M10KRNGA0425Z00532
-
-검증계_ 구독 해지
-WRBA1M10KRDWJ0125F00850
+    d.serial,
+    d.device_name,
+    d.device_type,
+    COALESCE(cs.고정청정, 0) AS 고정청정,
+    COALESCE(cs.전체공간청정, 0) AS 전체공간청정,
+    COALESCE(cs.선택공간청정, 0) AS 선택공간청정,
+    COALESCE(cs.자동호출청정, 0) AS 자동호출청정,
+    COALESCE(cs.총청정횟수, 0) AS 총청정횟수,
+    COALESCE(ls.LLM사용, 0) AS LLM사용,
+    COALESCE(vs.바이탈사인, 0) AS 바이탈사인,
+    COALESCE(es.에러횟수, 0) AS 에러횟수,
+    COALESCE(ss.스트리밍사용, 0) AS 스트리밍사용,
+    COALESCE(fs.팔로미, 0) AS 팔로미
+FROM latest_device d
+LEFT JOIN clean_summary cs ON d.serial = cs.serial
+LEFT JOIN llm_summary ls ON d.id = ls.device_id
+LEFT JOIN vs_summary vs ON d.serial = vs.serial
+LEFT JOIN error_summary es ON d.serial = es.serial
+LEFT JOIN streaming_summary ss ON d.serial = ss.serial
+-- 콜레이션 불일치 해결을 위한 COLLATE 설정 추가
+LEFT JOIN follow_summary fs
+    ON d.serial = fs.serial COLLATE utf8mb4_unicode_ci
+WHERE
+    COALESCE(cs.총청정횟수, 0)
+    + COALESCE(ls.LLM사용, 0)
+    + COALESCE(vs.바이탈사인, 0)
+    + COALESCE(es.에러횟수, 0)
+    + COALESCE(ss.스트리밍사용, 0)
+    + COALESCE(fs.팔로미, 0) > 0
+ORDER BY d.serial;[오전 11:44]SELECT hcr.serial
+     , CASE hcr.call_aqm_type
+           WHEN 'NONE'   THEN '일반청정'
+           WHEN 'MANUAL' THEN '수동호출청정'
+           WHEN 'AUTO'   THEN '자동호출청정'
+           WHEN 'CANCEL' THEN '호출취소'
+           ELSE hcr.call_aqm_type
+       END AS call_type_name
+     , getCode_function('CLMD', hcr.clean_type_code, 'ko') AS clean_type_name
+     -- PM10
+     , hacr.before_aq_pm10 AS before_pm10
+     , hacr.after_aq_pm10  AS after_pm10
+     -- PM2.5
+     , hacr.before_aq_pm25 AS before_pm25
+     , hacr.after_aq_pm25  AS after_pm25
+     -- VOC (Index)
+     , hacr.before_aq_voc_index_level AS before_voc
+     , hacr.after_aq_voc_index_level  AS after_voc
+     -- NOx (Index)
+     , hacr.before_aq_nox_index_level AS before_nox
+     , hacr.after_aq_nox_index_level  AS after_nox
+     -- FA (ppb)
+     , hacr.before_fa_ppb AS before_fa
+     , hacr.after_fa_ppb  AS after_fa
+FROM history_clean_result hcr
+INNER JOIN history_area_clean_result hacr
+        ON hacr.clean_result_id = hcr.id
+LEFT JOIN device d
+       ON d.serial = hcr.serial
+      AND d.linked_yn = 'Y'
+WHERE hcr.delete_yn = 'N'
+  AND hcr.start_time >= '2026-08-01T00:00:00'
+  AND hcr.start_time <  '2026-09-01T00:00:00'
+  AND IFNULL(hacr.is_completed, 'N') = 'Y'
+ORDER BY hcr.serial
+       , FIELD(hcr.call_aqm_type, 'NONE', 'MANUAL', 'AUTO', 'CANCEL')
+       , hcr.start_time
+       , hacr.area_id;
